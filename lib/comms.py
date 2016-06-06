@@ -28,21 +28,17 @@ class StealthConn(object):
         if self.server or self.client:
             my_public_key, my_private_key = create_dh_key()
             # Send them our public key
-            padded_m = ANSI_X923_pad(str(my_public_key).encode("ascii"), AES.block_size)
+            padded_m = str(my_public_key).encode("ascii")
             self.send(padded_m)
             # Receive their public key
-            their_public_key = self.recv()
-            their_public_unpad = ANSI_X923_unpad(their_public_key, AES.block_size)
-            their_public_int = int(their_public_unpad)
+            their_public_key = int(self.recv())
             # Obtain our shared secret
-            self.shared_hash = calculate_dh_secret(their_public_int, my_private_key)
+            self.shared_hash = calculate_dh_secret(their_public_key, my_private_key)
             print("Shared hash: {}".format(self.shared_hash))
 
         # Initialise AES cipher for initiating session
         iv = Random.new().read(AES.block_size)
         self.cipher = AES.new(self.shared_hash[:32], self.aes_mode, iv)
-        
-        print("This session will last until the end of this hour.")
 
     def send(self, data):
         # Generate session key from current hour, then hash it
@@ -55,7 +51,7 @@ class StealthConn(object):
         
         if self.cipher:
             # Calculate HMAC prior to encrypting message and save hexdigest for later transmission
-            hmac_send = bytes(HMAC.new(data).hexdigest(), "ascii")
+            hmac_send = bytes(HMAC.new(str(data).encode("ascii")).hexdigest(), "ascii")
             
             # Encrypt hashed session key, HMAC and padded message, then prefix with the IV
             encrypted_data = iv + self.cipher.encrypt(h_session_key + hmac_send + ANSI_X923_pad(data, AES.block_size))
@@ -93,7 +89,7 @@ class StealthConn(object):
             h_session_key_received = decrypted_data[:128]
             
             # Calculate HMAC of received message
-            hmac_received_m = bytes(HMAC.new(data).hexdigest(), "ascii")
+            hmac_received_m = bytes(HMAC.new(str(data).encode("ascii")).hexdigest(), "ascii")
             
             # Check for matching HMACs to confirm message integrity and close connection if they do not match
             if hmac_received != hmac_received_m:

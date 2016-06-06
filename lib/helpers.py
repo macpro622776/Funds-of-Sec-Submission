@@ -1,6 +1,8 @@
 # We're using Python's builtin random
 # NOTE: This is not cryptographically strong
-import random
+#import random
+# Using PyCrypto's Random function
+from Crypto.Random import random
 import string
 
 def read_hex(data):
